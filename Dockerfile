@@ -1,20 +1,20 @@
 ### STAGE 1: BUILD ###
-FROM golang:1.21-alpine as builder
+FROM golang:1.21-alpine AS builder
 
 # Install required packages
 RUN apk update && apk upgrade && \
     apk add --no-cache bash git openssh
 
-# Set workdir
+# Set working directory
 WORKDIR /app
 
 # Copy all project files
-ADD . /app
+COPY . /app
 
 # Download dependencies
 RUN go mod download
 
-# Install swag CLI with version matching docs
+# Install swag CLI (fixed version)
 RUN go install github.com/swaggo/swag/cmd/swag@v1.8.1
 
 # Generate Swagger docs
@@ -27,16 +27,19 @@ RUN go install github.com/google/wire/cmd/wire@latest
 RUN /go/bin/wire ./internal/wired/mongo.go
 
 # Build the Go application
-RUN go build -o ./todoapi ./cmd/api
+RUN go build -o /go/bin/todoapi ./cmd/api
 
 ### STAGE 2: RUN ###
 FROM golang:1.21-alpine
 
+# Install necessary runtime packages (if needed)
+RUN apk add --no-cache bash
+
 # Copy compiled binary
-COPY --from=builder /app/todoapi /go/bin/todoapi
+COPY --from=builder /go/bin/todoapi /go/bin/todoapi
 
 # Expose port
 EXPOSE 8080
 
 # Run the application
-CMD ["todoapi"]
+CMD ["/go/bin/todoapi"]
