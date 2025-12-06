@@ -1,7 +1,7 @@
 # Dockerfile References: https://docs.docker.com/engine/reference/builder/
 
 ### STAGE 1: BUILD ###
-FROM golang:1.16.5-alpine as builder
+FROM golang:1.21-alpine as builder
 # The latest alpine images don't have some tools like (`git` and `bash`).
 # Adding git, bash and openssh to the image
 RUN apk update && apk upgrade && \
@@ -21,7 +21,7 @@ RUN go get github.com/google/wire/cmd/wire && wire ./internal/wired/mongo.go
 RUN go build -o ./todoapi ./cmd/api
 
 ### STAGE 2: RUN ###
-FROM golang:1.16.0-alpine
+FROM golang:1.21-alpine
 COPY --from=builder /app/todoapi /go/bin/todoapi
 # Expose port 8080 to the outside world
 EXPOSE 8080
