@@ -1,19 +1,7 @@
 version: '3'
-# Define services
 services:
-  # App Services
-  web:
-    build:
-      context: ./web
-      dockerfile: Dockerfile
-    ports:
-      - "5000:80"
-    depends_on:
-      - api
   api:
-    # Configuration for building the docker image for the service
     build:
-      # Use an image built from the specified dockerfile in the current directory.
       context: .
       dockerfile: Dockerfile
     environment:
@@ -28,7 +16,7 @@ services:
       - JAEGER_SERVICE_NAME=go-todo-app
       - GIN_MODE=debug
     ports:
-      - "8080:8080" # Forward the exposed port 8080 on the container to port 8080 on the host machine
+      - "8080:8080"
     restart: unless-stopped
     depends_on:
       - mongo
@@ -43,5 +31,3 @@ services:
       - "6831:6831/udp"
       - "5775:5775/udp"
       - "16686:16686"
-
-
