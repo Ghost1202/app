@@ -41,5 +41,6 @@ jobs:
 
     - name: Deploy to EC2
       run: |
+        ssh -o StrictHostKeyChecking=no -i key.pem ubuntu@3.124.219.135 "mkdir -p /home/ubuntu/app"
         scp -o StrictHostKeyChecking=no -i key.pem docker-compose.yml ubuntu@3.124.219.135:/home/ubuntu/app/docker-compose.yml
         ssh -o StrictHostKeyChecking=no -i key.pem ubuntu@3.124.219.135 "cd /home/ubuntu/app && docker compose pull && docker compose up -d"
