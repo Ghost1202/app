@@ -2,28 +2,40 @@
 
 ### STAGE 1: BUILD ###
 FROM golang:1.21-alpine as builder
-# The latest alpine images don't have some tools like (`git` and `bash`).
-# Adding git, bash and openssh to the image
+
+# Install required tools
 RUN apk update && apk upgrade && \
     apk add --no-cache bash git openssh
-# Create app directory
-RUN mkdir /app
-# Set the Current Working Directory inside the container
+
+# Set working directory
 WORKDIR /app
 ADD . /app
-# Download all dependancies. Dependencies will be cached if the go.mod and go.sum files are not changed
+
+# Download dependencies
 RUN go mod download
-# Generate Swagger document
-RUN go get github.com/swaggo/swag/cmd/swag && swag init -g ./cmd/api/main.go -o ./docs
-# Generate dependencies by wire
-RUN go get github.com/google/wire/cmd/wire && wire ./internal/wired/mongo.go
-# Build the Go api
+
+# Add Go bin to PATH
+ENV PATH="$PATH:$(go env GOPATH)/bin"
+
+# Install swag and generate Swagger documentation
+RUN go install github.com/swaggo/swag/cmd/swag@latest && \
+    swag init -g ./cmd/api/main.go -o ./docs
+
+# Install wire and generate dependencies
+RUN go install github.com/google/wire/cmd/wire@latest && \
+    wire ./internal/wired/mongo.go
+
+# Build the Go application
 RUN go build -o ./todoapi ./cmd/api
 
 ### STAGE 2: RUN ###
 FROM golang:1.21-alpine
+
+# Copy the compiled application
 COPY --from=builder /app/todoapi /go/bin/todoapi
-# Expose port 8080 to the outside world
+
+# Expose port 8080
 EXPOSE 8080
+
 # Run the executable
 CMD ["todoapi"]
