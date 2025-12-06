@@ -27,12 +27,12 @@ jobs:
 
     - name: Build Docker image
       run: |
-        docker build -t app:latest .
-        docker tag app:latest ${{ steps.login-ecr.outputs.registry }}/app:latest
+        docker build -t go-todo-app:latest .
+        docker tag go-todo-app:latest ${{ steps.login-ecr.outputs.registry }}/go-todo-app:latest
 
     - name: Push Docker image to ECR
       run: |
-        docker push ${{ steps.login-ecr.outputs.registry }}/app:latest
+        docker push ${{ steps.login-ecr.outputs.registry }}/go-todo-app:latest
 
     - name: Create SSH key file
       run: |
