@@ -1,5 +1,5 @@
 ### STAGE 1: BUILD ###
-FROM golang:1.21-alpine AS builder
+FROM golang:1.21-alpine as builder
 
 # Install required packages
 RUN apk update && apk upgrade && \
