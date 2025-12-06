@@ -1,45 +1,42 @@
 ### STAGE 1: BUILD ###
-FROM golang:1.21-alpine AS builder
+FROM golang:1.21-alpine as builder
 
-# Install required packages
+# Устанавливаем необходимые пакеты
 RUN apk update && apk upgrade && \
-    apk add --no-cache bash git openssh
+    apk add --no-cache bash git openssh build-base curl
 
-# Set working directory
+# Устанавливаем рабочую директорию
 WORKDIR /app
 
-# Copy all project files
+# Копируем все файлы проекта
 COPY . /app
 
-# Download dependencies
+# Загружаем зависимости
 RUN go mod download
 
-# Install swag CLI (fixed version)
+# Устанавливаем swag CLI фиксированной версии
 RUN go install github.com/swaggo/swag/cmd/swag@v1.8.1
 
-# Generate Swagger docs
-RUN /go/bin/swag init -g ./cmd/api/main.go -o ./docs
+# Генерируем Swagger документацию (учитываем internal пакеты)
+RUN /go/bin/swag init -g ./cmd/api/main.go -o ./docs --parseInternal
 
-# Install wire CLI
+# Устанавливаем wire CLI
 RUN go install github.com/google/wire/cmd/wire@latest
 
-# Generate wire dependencies
+# Генерируем wire зависимости
 RUN /go/bin/wire ./internal/wired/mongo.go
 
-# Build the Go application
-RUN go build -o /go/bin/todoapi ./cmd/api
+# Компилируем Go-приложение
+RUN go build -o ./todoapi ./cmd/api
 
 ### STAGE 2: RUN ###
 FROM golang:1.21-alpine
 
-# Install necessary runtime packages (if needed)
-RUN apk add --no-cache bash
+# Копируем бинарь из builder
+COPY --from=builder /app/todoapi /go/bin/todoapi
 
-# Copy compiled binary
-COPY --from=builder /go/bin/todoapi /go/bin/todoapi
-
-# Expose port
+# Открываем порт
 EXPOSE 8080
 
-# Run the application
-CMD ["/go/bin/todoapi"]
+# Запускаем приложение
+CMD ["todoapi"]
