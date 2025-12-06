@@ -1,0 +1,45 @@
+name: Build, Push to ECR and Deploy to EC2
+
+on:
+  push:
+    branches:
+      - master
+      - dev
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Build Docker image
+      run: |
+        docker build -t app:latest .
+        docker tag app:latest ${{ steps.login-ecr.outputs.registry }}/app:latest
+
+    - name: Push Docker image to ECR
+      run: |
+        docker push ${{ steps.login-ecr.outputs.registry }}/app:latest
+
+    - name: Create SSH key file
+      run: |
+        echo "${{ secrets.EC2_SSH_KEY }}" > key.pem
+        chmod 600 key.pem
+
+    - name: Deploy to EC2
+      run: |
+        scp -o StrictHostKeyChecking=no -i key.pem docker-compose.yml ubuntu@3.124.219.135:/home/ubuntu/app/docker-compose.yml
+        ssh -o StrictHostKeyChecking=no -i key.pem ubuntu@3.124.219.135 "cd /home/ubuntu/app && docker compose pull && docker compose up -d"
