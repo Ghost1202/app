@@ -19,8 +19,7 @@ RUN go install github.com/swaggo/swag/cmd/swag@v1.8.1
 RUN mkdir -p ./docs
 
 # Generate swagger documentation
-# Make sure path matches the location of main.go inside the container
-RUN /go/bin/swag init -g ./go-todo-app/cmd/api/main.go -o ./go-todo-app/docs --parseInternal --parseDependency
+RUN /go/bin/swag init -g ./cmd/api/main.go -o ./docs --parseInternal --parseDependency
 
 RUN go install github.com/google/wire/cmd/wire@latest
 
