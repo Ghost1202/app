@@ -36,11 +36,11 @@ jobs:
 
     - name: Create SSH key file
       run: |
-        echo "${{ secrets.EC2_SSH_KEY }}" > key.pem
-        chmod 600 key.pem
+        echo "${{ secrets.EC2_SSH_KEY }}" > my-ec2-key
+        chmod 600 my-ec2-key
 
     - name: Deploy to EC2
       run: |
-        ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@3.124.219.135 "mkdir -p /home/ec2-user/app"
-        scp -o StrictHostKeyChecking=no -i key.pem docker-compose.yml ec2-user@3.124.219.135:/home/ec2-user/app/docker-compose.yml
-        ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@3.124.219.135 "cd /home/ec2-user/app && docker compose pull && docker compose up -d"
+        ssh -o StrictHostKeyChecking=no -i my-ec2-key ec2-user@3.124.219.135 "mkdir -p /home/ec2-user/app"
+        scp -o StrictHostKeyChecking=no -i my-ec2-key docker-compose.yml ec2-user@3.124.219.135:/home/ec2-user/app/docker-compose.yml
+        ssh -o StrictHostKeyChecking=no -i my-ec2-key ec2-user@3.124.219.135 "cd /home/ec2-user/app && docker-compose pull && docker-compose up -d"

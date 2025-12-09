@@ -26,12 +26,12 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t go-todo-app .
+          docker build -t go-todo-app:latest .
 
       - name: Tag image
         run: |
-          docker tag go-todo-app:latest 703288805108.dkr.ecr.eu-central-1.amazonaws.com/go-todo-app:latest
+          docker tag go-todo-app:latest ${{ steps.login-ecr.outputs.registry }}/go-todo-app:latest
 
       - name: Push image to ECR
         run: |
-          docker push 703288805108.dkr.ecr.eu-central-1.amazonaws.com/go-todo-app:latest
+          docker push ${{ steps.login-ecr.outputs.registry }}/go-todo-app:latest
