@@ -10,47 +10,45 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repo
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: eu-central-1
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-central-1
 
-    - name: Login to Amazon ECR
-      id: login-ecr
-      uses: aws-actions/amazon-ecr-login@v2
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
 
-    # --- Build and Push API image ---
-    - name: Build Docker image for API
-      run: |
-        docker build -t go-todo-api ./app
-        docker tag go-todo-api:latest 703288805108.dkr.ecr.eu-central-1.amazonaws.com/go-todo-app:api
-        docker push 703288805108.dkr.ecr.eu-central-1.amazonaws.com/go-todo-app:api
+      # --- Build and Push API image ---
+      - name: Build Docker image for API
+        run: |
+          docker build -t go-todo-api .
+          docker tag go-todo-api:latest 703288805108.dkr.ecr.eu-central-1.amazonaws.com/go-todo-app:latest
+          docker push 703288805108.dkr.ecr.eu-central-1.amazonaws.com/go-todo-app:latest
 
-    # --- Build and Push Web image ---
-    - name: Build Docker image for Web
-      run: |
-        docker build -t go-todo-web ./web
-        docker tag go-todo-web:latest 703288805108.dkr.ecr.eu-central-1.amazonaws.com/go-todo-app:web
-        docker push 703288805108.dkr.ecr.eu-central-1.amazonaws.com/go-todo-app:web
+      # --- Build and Push Web image ---
+      - name: Build Docker image for Web
+        run: |
+          docker build -t go-todo-web ./web
+          docker tag go-todo-web:latest 703288805108.dkr.ecr.eu-central-1.amazonaws.com/go-todo-web:latest
+          docker push 703288805108.dkr.ecr.eu-central-1.amazonaws.com/go-todo-web:latest
 
-    - name: Create SSH key file
-      run: |
-        echo "${{ secrets.EC2_SSH_KEY }}" > my-ec2-key
-        chmod 600 my-ec2-key
+      - name: Create SSH key file
+        run: |
+          echo "${{ secrets.EC2_SSH_KEY }}" > my-ec2-key
+          chmod 600 my-ec2-key
 
-    - name: Deploy to EC2
-      run: |
-        ssh -o StrictHostKeyChecking=no -i my-ec2-key ec2-user@YOUR_EC2_IP "
-          mkdir -p /home/ec2-user/app
-        "
-        scp -o StrictHostKeyChecking=no -i my-ec2-key docker-compose.yml ec2-user@YOUR_EC2_IP:/home/ec2-user/app/docker-compose.yml
-        ssh -o StrictHostKeyChecking=no -i my-ec2-key ec2-user@YOUR_EC2_IP "
-          cd /home/ec2-user/app && \
-          docker compose pull && \
-          docker compose up -d --build
-        "
+      - name: Deploy to EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no -i my-ec2-key ec2-user@3.124.219.135 "mkdir -p /home/ec2-user/app"
+          scp -o StrictHostKeyChecking=no -i my-ec2-key docker-compose.yml ec2-user@3.124.219.135:/home/ec2-user/app/docker-compose.yml
+          ssh -o StrictHostKeyChecking=no -i my-ec2-key ec2-user@3.124.219.135 "
+            cd /home/ec2-user/app && \
+            docker-compose pull && \
+            docker-compose up -d --build
+          "
