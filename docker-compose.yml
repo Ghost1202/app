@@ -1,32 +1,33 @@
+version: "3.9"
+
 services:
   api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    environment:
-      - MONGO_URL=mongodb://mongo:27017
-      - MONGO_TODO_DB=TodoDb
-      - MONGO_MAX_POOL_SIZE=10
-      - MONGO_CONNECTION_TIMEOUT=20
-      - JAEGER_AGENT_HOST=jaeger
-      - JAEGER_AGENT_PORT=6831
-      - JAEGER_SAMPLER_PARAM=1
-      - JAEGER_SAMPLER_TYPE=probabilistic
-      - JAEGER_SERVICE_NAME=go-todo-app
-      - GIN_MODE=debug
+    image: <ECR_REGISTRY>/go-todo-api:latest
     ports:
       - "8080:8080"
-    restart: unless-stopped
     depends_on:
       - mongo
       - jaeger
+
+  web:
+    image: 703288805108.dkr.ecr.eu-central-1.amazonaws.com/go-todo-web:latest
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+
   mongo:
     image: mongo:3
     ports:
-      - '27017:27017'
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
   jaeger:
     image: jaegertracing/all-in-one:latest
     ports:
-      - "6831:6831/udp"
-      - "5775:5775/udp"
       - "16686:16686"
+      - "14268:14268"
+
+volumes:
+  mongo-data:

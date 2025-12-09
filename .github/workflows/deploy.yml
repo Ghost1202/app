@@ -25,14 +25,14 @@ jobs:
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
 
-    # Build and push API
+    # --- Build and Push API image ---
     - name: Build Docker image for API
       run: |
         docker build -t go-todo-api ./app
         docker tag go-todo-api:latest ${{ steps.login-ecr.outputs.registry }}/go-todo-api:latest
         docker push ${{ steps.login-ecr.outputs.registry }}/go-todo-api:latest
 
-    # Build and push Web
+    # --- Build and Push Web image ---
     - name: Build Docker image for Web
       run: |
         docker build -t go-todo-web ./web
@@ -44,14 +44,17 @@ jobs:
         echo "${{ secrets.EC2_SSH_KEY }}" > my-ec2-key
         chmod 600 my-ec2-key
 
-    # Deploy to EC2
     - name: Deploy to EC2
       run: |
         ssh -o StrictHostKeyChecking=no -i my-ec2-key ec2-user@3.124.219.135 "mkdir -p /home/ec2-user/app"
+
+        # копируем compose
         scp -o StrictHostKeyChecking=no -i my-ec2-key docker-compose.yml ec2-user@3.124.219.135:/home/ec2-user/app/docker-compose.yml
+
+        # перезапускаем контейнеры
         ssh -o StrictHostKeyChecking=no -i my-ec2-key ec2-user@3.124.219.135 "
-          cd /home/ec2-user/app && \
-          docker-compose pull && \
-          docker-compose down && \
-          docker-compose up -d --build
+          cd /home/ec2-user/app &&
+          docker-compose down || true &&
+          docker-compose pull &&
+          docker-compose up -d
         "
