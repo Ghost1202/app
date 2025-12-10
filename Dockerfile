@@ -1,4 +1,3 @@
-### STAGE 1: BUILD ###
 FROM golang:1.21-alpine as builder
 
 RUN apk update && apk upgrade && \
@@ -18,13 +17,11 @@ RUN go install github.com/swaggo/swag/cmd/swag@v1.8.1
 RUN go install github.com/google/wire/cmd/wire@latest
 
 RUN mkdir -p ./docs
-RUN /go/bin/swag init -g ./api/main.go -o ./docs --parseInternal --parseDependency || true
-
+RUN /go/bin/swag init -g ./cmd/api/main.go -o ./docs --parseInternal --parseDependency || true
 RUN /go/bin/wire ./internal/wired/mongo.go || true
 
-RUN go build -o /go/bin/todoapi ./api
+RUN go build -o /go/bin/todoapi ./cmd/api
 
-### STAGE 2: RUN ###
 FROM golang:1.21-alpine
 
 ENV PATH="/go/bin:${PATH}"
