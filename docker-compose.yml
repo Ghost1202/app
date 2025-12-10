@@ -1,7 +1,8 @@
 version: "3.9"
+
 services:
   api:
-    image: ${{ steps.login-ecr.outputs.registry }}/go-todo-api:latest
+    image: 703288805108.dkr.ecr.eu-central-1.amazonaws.com/go-todo-app:latest
     ports:
       - "8080:8080"
     depends_on:
@@ -9,7 +10,7 @@ services:
       - jaeger
 
   web:
-    image: ${{ steps.login-ecr.outputs.registry }}/go-todo-web:latest
+    image: 703288805108.dkr.ecr.eu-central-1.amazonaws.com/web:latest
     ports:
       - "80:80"
     depends_on:
