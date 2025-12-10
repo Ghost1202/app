@@ -2,12 +2,17 @@ version: "3.9"
 
 services:
   api:
+    build: .
     image: 703288805108.dkr.ecr.eu-central-1.amazonaws.com/go-todo-app:latest
     ports:
       - "8080:8080"
     depends_on:
       - mongo
       - jaeger
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/todo
+      - JAEGER_AGENT_HOST=jaeger
+    restart: unless-stopped
 
   web:
     image: 703288805108.dkr.ecr.eu-central-1.amazonaws.com/web:latest
@@ -15,6 +20,9 @@ services:
       - "80:80"
     depends_on:
       - api
+    environment:
+      - API_URL=http://api:8080
+    restart: unless-stopped
 
   mongo:
     image: mongo:3
@@ -22,12 +30,14 @@ services:
       - "27017:27017"
     volumes:
       - mongo-data:/data/db
+    restart: unless-stopped
 
   jaeger:
     image: jaegertracing/all-in-one:latest
     ports:
       - "16686:16686"
       - "14268:14268"
+    restart: unless-stopped
 
 volumes:
   mongo-data:
