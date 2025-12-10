@@ -1,5 +1,9 @@
 version: "3.9"
 
+networks:
+  app-network:
+    driver: bridge
+
 services:
   api:
     build: .
@@ -10,9 +14,11 @@ services:
       - mongo
       - jaeger
     environment:
-      - MONGO_URI=mongodb://mongo:27017/todo
-      - JAEGER_AGENT_HOST=jaeger
+      MONGO_URI: mongodb://mongo:27017/todo
+      JAEGER_AGENT_HOST: jaeger
     restart: unless-stopped
+    networks:
+      - app-network
 
   web:
     image: 703288805108.dkr.ecr.eu-central-1.amazonaws.com/web:latest
@@ -21,8 +27,10 @@ services:
     depends_on:
       - api
     environment:
-      - API_URL=http://api:8080
+      API_URL: http://api:8080
     restart: unless-stopped
+    networks:
+      - app-network
 
   mongo:
     image: mongo:3
@@ -31,6 +39,8 @@ services:
     volumes:
       - mongo-data:/data/db
     restart: unless-stopped
+    networks:
+      - app-network
 
   jaeger:
     image: jaegertracing/all-in-one:latest
@@ -38,6 +48,8 @@ services:
       - "16686:16686"
       - "14268:14268"
     restart: unless-stopped
+    networks:
+      - app-network
 
 volumes:
   mongo-data:
