@@ -1,99 +1,58 @@
-name: Build, Push to ECR and Deploy to EC2
+name: Build and Push Docker Images
 
 on:
   push:
     branches:
+      - main
       - master
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repo
-      uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: eu-central-1
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-central-1
 
-    - name: Login to Amazon ECR
-      id: login-ecr
-      uses: aws-actions/amazon-ecr-login@v2
+      - name: Login to ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
 
-    # ---------- API ----------
-    - name: Build API Docker image
-      run: |
-        docker build -t go-todo-app:latest .
+      ###############################
+      # Build API
+      ###############################
+      - name: Build API Image
+        run: |
+          docker build -t go-todo-api:latest -f Dockerfile .
 
-    - name: Tag API image
-      run: |
-        docker tag go-todo-app:latest 703288805108.dkr.ecr.eu-central-1.amazonaws.com/go-todo-app:latest
+      - name: Tag API Image
+        run: |
+          docker tag go-todo-api:latest \
+            ${{ steps.login-ecr.outputs.registry }}/go-todo-app:latest
 
-    - name: Push API image
-      run: |
-        docker push 703288805108.dkr.ecr.eu-central-1.amazonaws.com/go-todo-app:latest
+      - name: Push API Image
+        run: |
+          docker push ${{ steps.login-ecr.outputs.registry }}/go-todo-app:latest
 
-    # ---------- WEB ----------
-    - name: Build WEB Docker image
-      run: |
-        docker build -t go-todo-web:latest ./web
+      ###############################
+      # Build WEB
+      ###############################
+      - name: Build Web Image
+        run: |
+          docker build -t go-todo-web:latest ./web
 
-    - name: Tag WEB image
-      run: |
-        docker tag go-todo-web:latest 703288805108.dkr.ecr.eu-central-1.amazonaws.com/web:latest
+      - name: Tag Web Image
+        run: |
+          docker tag go-todo-web:latest \
+            703288805108.dkr.ecr.eu-central-1.amazonaws.com/web:latest
 
-    - name: Push WEB image
-      run: |
-        docker push 703288805108.dkr.ecr.eu-central-1.amazonaws.com/web:latest
-
-    # ---------- DEPLOY TO EC2 ----------
-    - name: Create SSH key file
-      run: |
-        echo "${{ secrets.EC2_SSH_KEY }}" > deploy-key.pem
-        chmod 600 deploy-key.pem
-
-    - name: Deploy via SSH
-      run: |
-        ssh -o StrictHostKeyChecking=no -i deploy-key.pem ec2-user@3.124.219.135 "
-          mkdir -p /home/ec2-user/app &&
-          cat > /home/ec2-user/app/docker-compose.yml << 'EOF'
-version: '3.9'
-
-services:
-  api:
-    image: 703288805108.dkr.ecr.eu-central-1.amazonaws.com/go-todo-app:latest
-    ports:
-      - '8080:8080'
-
-  web:
-    image: 703288805108.dkr.ecr.eu-central-1.amazonaws.com/web:latest
-    ports:
-      - '80:80'
-    depends_on:
-      - api
-
-  mongo:
-    image: mongo:3
-    ports:
-      - '27017:27017'
-    volumes:
-      - mongo-data:/data/db
-
-  jaeger:
-    image: jaegertracing/all-in-one:latest
-    ports:
-      - '16686:16686'
-      - '14268:14268'
-
-volumes:
-  mongo-data:
-EOF
-
-          cd /home/ec2-user/app &&
-          docker compose pull &&
-          docker compose up -d --force-recreate
-        "
+      - name: Push Web Image
+        run: |
+          docker push 703288805108.dkr.ecr.eu-central-1.amazonaws.com/web:latest
