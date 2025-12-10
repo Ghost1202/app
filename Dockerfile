@@ -1,4 +1,4 @@
-лл### STAGE 1: BUILD ###
+### STAGE 1: BUILD ###
 FROM golang:1.21-alpine as builder
 
 RUN apk update && apk upgrade && \
