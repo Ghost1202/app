@@ -4,56 +4,82 @@ on:
   push:
     branches:
       - master
+  workflow_dispatch:
+
+env:
+  AWS_REGION: eu-central-1
+  AWS_ACCOUNT_ID: 703288805108
+  ECR_REGISTRY: ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+  API_REPO: go-todo-app
+  WEB_REPO: web
+  TAG: latest
+  EC2_REMOTE_PATH: /home/ec2-user/app
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 40
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ secrets.AWS_REGION }}
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
 
-    - name: Login to Amazon ECR
-      id: login-ecr
-      uses: aws-actions/amazon-ecr-login@v2
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
 
-    # --- Build and Push API image ---
-    - name: Build Docker image for API
-      run: |
-        docker build -t go-todo-api .
-        docker tag go-todo-api:latest ${{ steps.login-ecr.outputs.registry }}/go-todo-api:latest
-        docker push ${{ steps.login-ecr.outputs.registry }}/go-todo-api:latest
+      - name: Ensure ECR repositories exist
+        run: |
+          aws ecr describe-repositories --repository-names "${API_REPO}" --region "${AWS_REGION}" >/dev/null 2>&1 || \
+            aws ecr create-repository --repository-name "${API_REPO}" --region "${AWS_REGION}"
+          aws ecr describe-repositories --repository-names "${WEB_REPO}" --region "${AWS_REGION}" >/dev/null 2>&1 || \
+            aws ecr create-repository --repository-name "${WEB_REPO}" --region "${AWS_REGION}"
 
-    # --- Build and Push Web image ---
-    - name: Build Docker image for Web
-      run: |
-        docker build -t go-todo-web ./web
-        docker tag go-todo-web:latest ${{ steps.login-ecr.outputs.registry }}/go-todo-web:latest
-        docker push ${{ steps.login-ecr.outputs.registry }}/go-todo-web:latest
+      - name: Build & push API image
+        run: |
+          docker build -t ${API_REPO}:latest .
+          docker tag ${API_REPO}:latest ${ECR_REGISTRY}/${API_REPO}:${TAG}
+          docker push ${ECR_REGISTRY}/${API_REPO}:${TAG}
 
-    - name: Create SSH key file
-      run: |
-        echo "${{ secrets.EC2_SSH_KEY }}" > my-ec2-key
-        chmod 600 my-ec2-key
+      - name: Build & push Web image
+        run: |
+          docker build -t ${WEB_REPO}:latest ./web
+          docker tag ${WEB_REPO}:latest ${ECR_REGISTRY}/${WEB_REPO}:${TAG}
+          docker push ${ECR_REGISTRY}/${WEB_REPO}:${TAG}
 
-    - name: Deploy to EC2
-      run: |
-        # Создаем папку на EC2
-        ssh -o StrictHostKeyChecking=no -i my-ec2-key ec2-user@${{ secrets.EC2_HOST }} "mkdir -p /home/ec2-user/app"
+      - name: Create SSH key file
+        run: |
+          echo "${{ secrets.EC2_SSH_KEY }}" > my-ec2-key.pem
+          chmod 600 my-ec2-key.pem
 
-        # Копируем docker-compose.yml
-        scp -o StrictHostKeyChecking=no -i my-ec2-key docker-compose.yml ec2-user@${{ secrets.EC2_HOST }}:/home/ec2-user/app/docker-compose.yml
+      - name: Copy docker-compose to EC2
+        run: |
+          scp -o StrictHostKeyChecking=no -i my-ec2-key.pem docker-compose.yml ${{ secrets.EC2_USER || 'ec2-user' }}@${{ secrets.EC2_HOST }}:${{ env.EC2_REMOTE_PATH }}/docker-compose.yml
 
-        # Поднимаем все контейнеры на EC2
-        ssh -o StrictHostKeyChecking=no -i my-ec2-key ec2-user@${{ secrets.EC2_HOST }} "
-          cd /home/ec2-user/app && \
-          docker compose pull && \
-          docker compose up -d --build
-        "
+      - name: Trigger remote deploy on EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no -i my-ec2-key.pem ${{ secrets.EC2_USER || 'ec2-user' }}@${{ secrets.EC2_HOST }} <<'EOF'
+            set -e
+            cd $EC2_REMOTE_PATH || mkdir -p $EC2_REMOTE_PATH && cd $EC2_REMOTE_PATH
+            # Make sure docker/compose are available
+            docker --version || (echo "docker not found on remote host"; exit 1)
+            # Pull latest images from ECR and bring containers up
+            docker compose pull
+            docker compose up -d --remove-orphans
+            # Optional: show status
+            docker ps --filter "name=go-todo-app" --filter "name=web" || true
+          EOF
+        env:
+          EC2_REMOTE_PATH: ${{ env.EC2_REMOTE_PATH }}
+
+      - name: Cleanup SSH key
+        if: always()
+        run: |
+          shred -u my-ec2-key.pem || rm -f my-ec2-key.pem || true
