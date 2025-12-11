@@ -19,12 +19,12 @@ export class TodoService {
   constructor(private http: HttpClient) {}
 
   getTodos(): Observable<Todo[]> {
-    return this.http.get<Todo[]>(`${environment.apiURL}/api/v1/todo`);
+    return this.http.get<Todo[]>(`${environment.apiUrl}/api/v1/todo`);
   }
 
   addTodo(todo: CreateTodo): Observable<CreateTodoResult> {
     return this.http.post<CreateTodoResult>(
-      `${environment.apiURL}/api/v1/todo`,
+      `${environment.apiUrl}/api/v1/todo`,
       JSON.stringify(todo),
       {
         headers: this.headers,
@@ -34,7 +34,7 @@ export class TodoService {
 
   updateTodo(todoID: string, todo: UpdateTodo): Observable<any> {
     return this.http.put<any>(
-      `${environment.apiURL}/api/v1/todo/${todoID}`,
+      `${environment.apiUrl}/api/v1/todo/${todoID}`,
       JSON.stringify(todo),
       {
         headers: this.headers,
@@ -44,7 +44,7 @@ export class TodoService {
 
   deleteTodo(todoID: string): Observable<any> {
     return this.http.delete<any>(
-      `${environment.apiURL}/api/v1/todo/${todoID}`,
+      `${environment.apiUrl}/api/v1/todo/${todoID}`,
       {
         headers: this.headers,
       }
@@ -52,7 +52,7 @@ export class TodoService {
   }
 
   getTodo(todoID: string): Observable<Todo> {
-    return this.http.get<Todo>(`${environment.apiURL}/api/v1/todo/${todoID}`, {
+    return this.http.get<Todo>(`${environment.apiUrl}/api/v1/todo/${todoID}`, {
       headers: this.headers,
     });
   }
