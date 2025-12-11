@@ -1,5 +1,4 @@
 export const environment = {
-  production: true,
-  apiUrl: 'http://api:8080/api/v1/todo'
+  production: false, // или true для продакшена
+  apiUrl: 'http://3.124.219.135:8080' // внешний IP или домен сервера
 };
-
