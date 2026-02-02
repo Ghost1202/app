@@ -147,4 +147,4 @@ This command builds docker services so if it's ok check same application urls.
   
   Integration Test run command
   
-    make integration-test
+    make integration-test# PR visible test
