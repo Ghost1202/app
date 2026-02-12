@@ -1,0 +1,58 @@
+name: Build and Push Docker Images
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-central-1
+
+      - name: Login to ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      ###############################
+      # Build API
+      ###############################
+      - name: Build API Image
+        run: |
+          docker build -t go-todo-api:latest -f Dockerfile .
+
+      - name: Tag API Image
+        run: |
+          docker tag go-todo-api:latest \
+            ${{ steps.login-ecr.outputs.registry }}/go-todo-app:latest
+
+      - name: Push API Image
+        run: |
+          docker push ${{ steps.login-ecr.outputs.registry }}/go-todo-app:latest
+
+      ###############################
+      # Build WEB
+      ###############################
+      - name: Build Web Image
+        run: |
+          docker build -t go-todo-web:latest ./web
+
+      - name: Tag Web Image
+        run: |
+          docker tag go-todo-web:latest \
+            703288805108.dkr.ecr.eu-central-1.amazonaws.com/web:latest
+
+      - name: Push Web Image
+        run: |
+          docker push 703288805108.dkr.ecr.eu-central-1.amazonaws.com/web:latest
