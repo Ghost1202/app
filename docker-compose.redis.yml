@@ -1,20 +1,20 @@
-version: '3'
-# Define services
 services:
-  # App Services
   web:
     build:
       context: ./web
       dockerfile: Dockerfile
     ports:
-    - "5000:80"
+      - "5000:80"
     depends_on:
       - api
+
   api:
-    # Configuration for building the docker image for the service
     build:
-      context: . # Use an image built from the specified dockerfile in the current directory.
-      dockerfile: ./Dockerfile.redis
+      context: .
+      dockerfile: Dockerfile
+      args:
+        WIRE_TARGET: ./internal/wired/redis.go
+        GENERATE_SWAGGER: "false"
     environment:
       - REDIS_URL=redis:6379
       - REDIS_TODO_DB=0
@@ -27,20 +27,20 @@ services:
       - JAEGER_SERVICE_NAME=go-todo-app
       - GIN_MODE=debug
     ports:
-      - "8080:8080" # Forward the exposed port 8080 on the container to port 8080 on the host machine
+      - "8080:8080"
     restart: unless-stopped
     depends_on:
       - redis
       - jaeger
+
   redis:
     image: redis:6.2.1-alpine3.13
     ports:
-      - '6379:6379'
+      - "6379:6379"
+
   jaeger:
     image: jaegertracing/all-in-one:latest
     ports:
       - "6831:6831/udp"
       - "5775:5775/udp"
       - "16686:16686"
-
-

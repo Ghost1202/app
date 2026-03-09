@@ -1,13 +1,11 @@
-version: '3'
-# Define services
 services:
-  # App Services
   api:
-    # Configuration for building the docker image for the service
     build:
-      # Use an image built from the specified dockerfile in the current directory.
       context: .
       dockerfile: Dockerfile
+      args:
+        WIRE_TARGET: ./internal/wired/mongo.go
+        GENERATE_SWAGGER: "false"
     container_name: todo_test_api
     environment:
       - MONGO_URL=mongodb://mongo:27017
@@ -20,15 +18,13 @@ services:
       - JAEGER_SAMPLER_TYPE=probabilistic
       - JAEGER_SERVICE_NAME=go-todo-app
     ports:
-      - "8080:8080" # Forward the exposed port 8080 on the container to port 8080 on the host machine
+      - "8080:8080"
     restart: unless-stopped
     depends_on:
       - mongo
+
   mongo:
     image: mongo:3
     container_name: todo_test_db
     ports:
-      - '27017:27017'
-
-
-
+      - "27017:27017"

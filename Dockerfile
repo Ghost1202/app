@@ -1,36 +1,35 @@
-FROM golang:1.21-alpine as builder
+FROM golang:1.21-alpine AS builder
 
-RUN apk update && apk upgrade && \
-    apk add --no-cache bash git openssh build-base curl
-
-ENV GO111MODULE=on
-ENV GOPROXY=https://proxy.golang.org,direct
-ENV PATH="/go/bin:${PATH}"
+ARG WIRE_TARGET=./internal/wired/mongo.go
+ARG GENERATE_SWAGGER=false
 
 WORKDIR /app
 
-COPY . /app
+RUN apk add --no-cache git ca-certificates
 
+COPY go.mod go.sum ./
 RUN go mod download
 
-RUN go install github.com/swaggo/swag/cmd/swag@v1.8.1
-RUN go install github.com/google/wire/cmd/wire@latest
+COPY . .
 
-RUN mkdir -p ./docs
-RUN /go/bin/swag init -g ./cmd/api/main.go -o ./docs --parseInternal --parseDependency || true
-RUN /go/bin/wire ./internal/wired/mongo.go || true
+RUN mkdir -p ./docs && \
+    go install github.com/google/wire/cmd/wire@latest && \
+    if [ "$GENERATE_SWAGGER" = "true" ]; then \
+      go install github.com/swaggo/swag/cmd/swag@latest && \
+      /go/bin/swag init -g ./cmd/api/main.go -o ./docs --parseInternal --parseDependency; \
+    fi && \
+    /go/bin/wire "$WIRE_TARGET" && \
+    CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /out/todoapi ./cmd/api
 
-RUN go build -o /go/bin/todoapi ./cmd/api
+FROM alpine:3.21
 
-FROM golang:1.21-alpine
-
-ENV PATH="/go/bin:${PATH}"
+RUN apk add --no-cache ca-certificates
 
 WORKDIR /app
 
-COPY --from=builder /go/bin/todoapi /go/bin/todoapi
+COPY --from=builder /out/todoapi /usr/local/bin/todoapi
 COPY --from=builder /app/docs /app/docs
 
 EXPOSE 8080
 
-CMD ["todoapi"]
+ENTRYPOINT ["todoapi"]

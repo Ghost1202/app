@@ -2,7 +2,6 @@ name: Container Build
 
 on:
   workflow_call:
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -36,12 +35,12 @@ jobs:
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
-          docker build -t $REGISTRY/$API_REPO:$TAG -f Dockerfile .
-          docker push $REGISTRY/$API_REPO:$TAG
+          docker build -t "$REGISTRY/$API_REPO:$TAG" -f Dockerfile .
+          docker push "$REGISTRY/$API_REPO:$TAG"
 
       - name: Build and push Web image
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
-          docker build -t $REGISTRY/$WEB_REPO:$TAG ./web
-          docker push $REGISTRY/$WEB_REPO:$TAG
+          docker build -t "$REGISTRY/$WEB_REPO:$TAG" ./web
+          docker push "$REGISTRY/$WEB_REPO:$TAG"
