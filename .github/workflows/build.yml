@@ -1,58 +1,47 @@
-name: Build and Push Docker Images
+name: Container Build
 
 on:
-  push:
-    branches:
-      - main
-      - master
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: eu-central-1
+  API_REPO: go-todo-app
+  WEB_REPO: web
+  TAG: latest
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: eu-central-1
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
 
-      - name: Login to ECR
+      - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      ###############################
-      # Build API
-      ###############################
-      - name: Build API Image
+      - name: Build and push API image
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
-          docker build -t go-todo-api:latest -f Dockerfile .
+          docker build -t $REGISTRY/$API_REPO:$TAG -f Dockerfile .
+          docker push $REGISTRY/$API_REPO:$TAG
 
-      - name: Tag API Image
+      - name: Build and push Web image
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
-          docker tag go-todo-api:latest \
-            ${{ steps.login-ecr.outputs.registry }}/go-todo-app:latest
-
-      - name: Push API Image
-        run: |
-          docker push ${{ steps.login-ecr.outputs.registry }}/go-todo-app:latest
-
-      ###############################
-      # Build WEB
-      ###############################
-      - name: Build Web Image
-        run: |
-          docker build -t go-todo-web:latest ./web
-
-      - name: Tag Web Image
-        run: |
-          docker tag go-todo-web:latest \
-            703288805108.dkr.ecr.eu-central-1.amazonaws.com/web:latest
-
-      - name: Push Web Image
-        run: |
-          docker push 703288805108.dkr.ecr.eu-central-1.amazonaws.com/web:latest
+          docker build -t $REGISTRY/$WEB_REPO:$TAG ./web
+          docker push $REGISTRY/$WEB_REPO:$TAG
